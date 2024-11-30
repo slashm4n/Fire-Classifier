@@ -26,7 +26,8 @@ def data_loader(directory, batch_size):
     
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
-    return train_loader, val_loader
+    val2_loader = DataLoader(val2_dataset, batch_size=batch_size, shuffle=False)
+    return train_loader, val_loader, val2_loader
 
 
 # Vision Transformer Model
@@ -89,7 +90,7 @@ def validate_epoch(model, loader, criterion, device):
 # Main
 directory = "dl2425_challenge_dataset"
 batch_size = 4
-train_loader, val_loader = data_loader(directory, batch_size)
+train_loader, val_loader, val2_loader = data_loader(directory, batch_size)
 
 model = ViTClassifier(hidden_classes = 3, num_classes = 2)
 criterion = nn.CrossEntropyLoss()
@@ -115,8 +116,9 @@ for epoch in range(epochs):
 
 
     val_loss, val_accuracy = validate_epoch(model, val_loader, criterion, device)
-    val2_loss, val2_accuracy = validate_epoch(model, val_loader, criterion, device)
+    val2_loss, val2_accuracy = validate_epoch(model, val2_loader, criterion, device)
     
 
     print(f"Epoch {epoch+1}/{epochs}, Train Loss: {train_loss:.4f}, "
-          f"Val Loss: {val_loss:.4f}, Val Accuracy: {val_accuracy:.4f}")
+          f"Val Loss: {val_loss:.4f}, Val Accuracy: {val_accuracy:.4f}"
+          f"Val2 Loss: {val2_loss:.4f}, Val2 Accuracy: {val2_accuracy:.4f}")
