@@ -5,9 +5,17 @@ from torch.utils.data import DataLoader
 from timm import create_model  # PyTorch image models library
 import csv
 import matplotlib.pyplot as plt
+import os
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+class ImageFolderWithPaths(datasets.ImageFolder):
+    def __getitem__(self, index):
+        # Original tuple: (image, label)
+        original_tuple = super().__getitem__(index)
+        # Add the file path
+        path = self.imgs[index][0]
+        return (*original_tuple, path)
 
 # Loads the data
 def data_loader(directory, batch_size):
@@ -22,9 +30,9 @@ def data_loader(directory, batch_size):
     val_dir = directory + "\\val"
     val2_dir = directory + "\\test"
 
-    train_dataset = datasets.ImageFolder(root=train_dir, transform=transform)
-    val_dataset = datasets.ImageFolder(root=val_dir, transform=transform)
-    val2_dataset = datasets.ImageFolder(root=val2_dir, transform=transform)
+    train_dataset = ImageFolderWithPaths(root=train_dir, transform=transform)
+    val_dataset = ImageFolderWithPaths(root=val_dir, transform=transform)
+    val2_dataset = ImageFolderWithPaths(root=val2_dir, transform=transform)
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
@@ -52,7 +60,7 @@ def train_epoch(model, loader, optimizer, criterion, device):
     running_loss = 0.0
     i = 0
 
-    for images, labels in loader:
+    for batch_idx, (images, labels, paths) in enumerate(loader):
         images, labels = images.to(device), labels.to(device)
 
         optimizer.zero_grad()
@@ -72,14 +80,18 @@ def train_epoch(model, loader, optimizer, criterion, device):
 
 
 # Validation Loop
-def validate_epoch(model, loader, criterion, device):
+def validate_epoch(model, loader, criterion, device, csv_file):
     model.eval()
     running_loss = 0.0
     correct = 0
     total = 0
 
+    with open(csv_file, mode="w", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerow(["id", "class", "Correct Label"]) #to remove last column when give to professors
+
     with torch.no_grad():
-        for images, labels in loader:
+        for batch_idx, (images, labels, paths) in enumerate(loader):
             images, labels = images.to(device), labels.to(device)
             outputs = model(images)
             loss = criterion(outputs, labels)
@@ -88,6 +100,13 @@ def validate_epoch(model, loader, criterion, device):
             _, preds = torch.max(outputs, 1)
             correct += (preds == labels).sum().item()
             total += labels.size(0)
+
+            # Write each image's details to the CSV
+            for path, label, pred in zip(paths, labels.cpu().numpy(), preds.cpu().numpy()):
+                with open(csv_file, mode="a", newline="") as file:
+                    filename = os.path.basename(path)
+                    writer = csv.writer(file)
+                    writer.writerow([filename, pred, label])
 
     epoch_loss = running_loss / len(loader.dataset)
     accuracy = correct / total
@@ -104,7 +123,7 @@ criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.AdamW(model.parameters(), lr=0.001)
 model.to(device)
 
-epochs = 4
+epochs = 2
 dir_models = "saved_models\\"
 model_name = "VitModel"
 LOAD_MODEL = True # set to True if you want to load a model to continue its training
@@ -115,6 +134,9 @@ csv_file = f"{model_name}_metrics.csv"
 with open(csv_file, mode="w", newline="") as file:
     writer = csv.writer(file)
     writer.writerow(["Epoch", "Train Loss", "Val Loss", "Val Accuracy", "Test Loss", "Test Accuracy"])  # Write header
+
+# Create CSV file for annotating final predictions of classes
+csv_preds = f"{model_name}_predictions.csv"
 
 for epoch in range(epochs):
 
@@ -128,8 +150,8 @@ for epoch in range(epochs):
     torch.save(model.state_dict(), dir_models + model_name + "_epoch_" + str(START_EPOCH + epoch + 1) + ".pt")
     model.state_dict()
 
-    val_loss, val_accuracy = validate_epoch(model, val_loader, criterion, device)
-    val2_loss, val2_accuracy = validate_epoch(model, val2_loader, criterion, device)
+    val_loss, val_accuracy = validate_epoch(model, val_loader, criterion, device, csv_preds)
+    val2_loss, val2_accuracy = validate_epoch(model, val2_loader, criterion, device, csv_preds)
 
     # Write the current epoch's metrics to the CSV file
     with open(csv_file, mode="a", newline="") as file:
@@ -137,8 +159,8 @@ for epoch in range(epochs):
         writer.writerow([epoch+1, train_loss, val_loss, val_accuracy, val2_loss, val2_accuracy])
 
     print(f"Epoch {epoch + 1}/{epochs}, Train Loss: {train_loss:.4f}, "
-          f"Val Loss: {val_loss:.4f}, Val Accuracy: {val_accuracy:.4f}, Test Loss: {0:.4f}, "
-          f"Test Accuracy: {0:}")
+          f"Val Loss: {val_loss:.4f}, Val Accuracy: {val_accuracy:.4f}, Test Loss: {val2_loss:.4f}, "
+          f"Test Accuracy: {val2_accuracy:}")
 
 
 # Graphs for visualization
