@@ -1,2 +1,3 @@
-Ora è vuoto, ma quando si fa il training qua dentro ci andranno i vari modelli salvati
-Per capire quale di questi modelli ha performato meglio, si vede il csv all'epoch corrispondente
+Since the model weights are too large to be loaded on GitHub, here's a link to a Google Drive folder containing the model weights:
+
+https://drive.google.com/file/d/1Od8z1iJlNrrz2ny_yoO1DQhp_-hGx25P/view?usp=drive_link
