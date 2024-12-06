@@ -22,16 +22,13 @@ def DataLoader(directory, batch_size):
 
     train_dir = directory + "\\train"
     val_dir = directory + "\\val"
-    test_dir = directory + "\\test"
 
     train_dataset = datasets.ImageFolder(root=train_dir, transform=transform)
     val_dataset = datasets.ImageFolder(root=val_dir, transform=transform)
-    test_dataset = datasets.ImageFolder(root=test_dir, transform=transform)
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
-    return train_loader, val_loader, test_loader
+    return train_loader, val_loader
 
 
 # Vision Transformer Model
@@ -119,7 +116,7 @@ def PlotGraphs(csv_file, model_name):
     plt.savefig(model_name + "_TrainVal_Loss.png")  # Save the plot as an image
     plt.show()
 
-    # Plot Val Accuracy and Test Accuracy
+    # Plot Val Accuracy
     plt.figure(figsize=(10, 6))
     plt.plot(df["Epoch"], df["Val Accuracy"], label="Val Accuracy", marker='o')
     plt.xlabel("Epoch")
@@ -127,7 +124,7 @@ def PlotGraphs(csv_file, model_name):
     plt.title(model_name + "Validation Accuracy")
     plt.legend()
     plt.grid()
-    plt.savefig(model_name + "_ValTest_Accuracy.png")  # Save the plot as an image
+    plt.savefig(model_name + "_Val_Accuracy.png")  # Save the plot as an image
     plt.show()
 
 
@@ -159,12 +156,11 @@ def TrainAndValidate(model, train_loader, val_loader, model_metrics, epochs):
 
 # Runs the model, either with training and validation or printing the results
 def RunModel(directory, batch_size, epochs, dir_models, model_name, LOAD_MODEL, START_EPOCH):
-    train_loader, val_loader, test_loader = DataLoader(directory, batch_size)
+    train_loader, val_loader = DataLoader(directory, batch_size)
     model = ViTClassifier(hidden_classes=3, num_classes=2)
     model.to(device)
 
     model_metrics = model_name + "_metrics.csv"
-    test_results = "test_results.csv"
 
     # This will run only if we want to load the weights of our model instead of starting from zero
     if LOAD_MODEL:
